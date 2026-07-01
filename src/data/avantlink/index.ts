@@ -122,7 +122,9 @@ export class AvantLinkDataSource implements DataSource {
       url.searchParams.set(k, v);
     }
 
-    const res = await globalThis.fetch(url.toString());
+    const res = await globalThis.fetch(url.toString(), {
+      next: { revalidate: 3600 },
+    } as RequestInit);
     if (!res.ok) {
       throw new Error(`AvantLink API error ${res.status}: ${await res.text()}`);
     }

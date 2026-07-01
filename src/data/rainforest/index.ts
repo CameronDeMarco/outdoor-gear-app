@@ -154,7 +154,11 @@ export class RainforestDataSource implements DataSource {
       url.searchParams.set(k, v);
     }
 
-    const res = await globalThis.fetch(url.toString());
+    const res = await globalThis.fetch(url.toString(), {
+      // Next.js fetch cache: revalidate every hour server-side.
+      // Survives cold starts on Vercel so we don't re-hit the API on every request.
+      next: { revalidate: 3600 },
+    } as RequestInit);
     if (!res.ok) {
       throw new Error(`Rainforest API error ${res.status}: ${await res.text()}`);
     }

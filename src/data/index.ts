@@ -3,6 +3,7 @@ import { MockDataSource } from "./mock";
 import { RainforestDataSource } from "./rainforest";
 import { AvantLinkDataSource } from "./avantlink";
 import { MergedDataSource } from "./merged";
+import { CachingDataSource } from "./cache";
 
 /**
  * Builds the active data source from environment variables.
@@ -23,24 +24,30 @@ function buildDataSource(): DataSource {
     Boolean(process.env["AVANTLINK_API_KEY"]) && Boolean(process.env["AVANTLINK_WEBSITE_ID"]);
 
   if (mode === "live" && hasRainforest && hasAvantLink) {
-    return new MergedDataSource([
+    return new CachingDataSource(
+      new MergedDataSource([
+        new RainforestDataSource(process.env["RAINFOREST_API_KEY"]!),
+        new AvantLinkDataSource({
+          apiKey: process.env["AVANTLINK_API_KEY"]!,
+          websiteId: process.env["AVANTLINK_WEBSITE_ID"]!,
+        }),
+      ]),
+    );
+  }
+
+  if ((mode === "rainforest" || mode === "live") && hasRainforest) {
+    return new CachingDataSource(
       new RainforestDataSource(process.env["RAINFOREST_API_KEY"]!),
+    );
+  }
+
+  if ((mode === "avantlink" || mode === "live") && hasAvantLink) {
+    return new CachingDataSource(
       new AvantLinkDataSource({
         apiKey: process.env["AVANTLINK_API_KEY"]!,
         websiteId: process.env["AVANTLINK_WEBSITE_ID"]!,
       }),
-    ]);
-  }
-
-  if ((mode === "rainforest" || mode === "live") && hasRainforest) {
-    return new RainforestDataSource(process.env["RAINFOREST_API_KEY"]!);
-  }
-
-  if ((mode === "avantlink" || mode === "live") && hasAvantLink) {
-    return new AvantLinkDataSource({
-      apiKey: process.env["AVANTLINK_API_KEY"]!,
-      websiteId: process.env["AVANTLINK_WEBSITE_ID"]!,
-    });
+    );
   }
 
   if (mode !== "mock") {
