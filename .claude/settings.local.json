@@ -5,7 +5,8 @@
       "Bash(npm install *)",
       "Bash(npm run *)",
       "Bash(npm test *)",
-      "mcp__Claude_in_Chrome__navigate"
+      "mcp__Claude_in_Chrome__navigate",
+      "mcp__Claude_Preview__preview_start"
     ]
   }
 }

@@ -1,4 +1,4 @@
-# Trailhead — Outdoor Gear App
+# Gear IQ — Outdoor Gear App
 
 Recommends outdoor gear by **review quality** and scans **multiple retailers for the best price**. Built with Next.js (App Router) and modern, strict TypeScript.
 
