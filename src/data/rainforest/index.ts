@@ -14,14 +14,14 @@ const BASE_URL = "https://api.rainforestapi.com/request";
  * Amazon doesn't have a direct category API, so we search by keyword + department.
  */
 const CATEGORY_QUERIES: Record<GearCategory, { keywords: string; amazonDept: string }> = {
-  tents: { keywords: "backpacking tent", amazonDept: "sporting-goods" },
-  "sleeping-bags": { keywords: "backpacking sleeping bag", amazonDept: "sporting-goods" },
-  backpacks: { keywords: "hiking backpack", amazonDept: "sporting-goods" },
-  "hiking-boots": { keywords: "hiking boots waterproof", amazonDept: "shoes" },
-  jackets: { keywords: "outdoor hiking jacket", amazonDept: "sporting-goods" },
-  stoves: { keywords: "backpacking camp stove", amazonDept: "sporting-goods" },
-  "water-filters": { keywords: "backpacking water filter", amazonDept: "sporting-goods" },
-  headlamps: { keywords: "hiking headlamp rechargeable", amazonDept: "sporting-goods" },
+  tents: { keywords: "backpacking tent lightweight adults", amazonDept: "sporting-goods" },
+  "sleeping-bags": { keywords: "backpacking sleeping bag adults mummy", amazonDept: "sporting-goods" },
+  backpacks: { keywords: "hiking backpacking pack adults 50L 60L 65L", amazonDept: "sporting-goods" },
+  "hiking-boots": { keywords: "men women hiking boots waterproof trail", amazonDept: "shoes" },
+  jackets: { keywords: "hiking rain shell insulated jacket backpacking outdoor", amazonDept: "sporting-goods" },
+  stoves: { keywords: "backpacking stove canister camp stove burner", amazonDept: "sporting-goods" },
+  "water-filters": { keywords: "backpacking water filter purifier hiking", amazonDept: "sporting-goods" },
+  headlamps: { keywords: "headlamp camping hiking rechargeable LED adults", amazonDept: "sporting-goods" },
 };
 
 const AMAZON_RETAILER: Retailer = {
@@ -32,6 +32,43 @@ const AMAZON_RETAILER: Retailer = {
 
 function dollarsToCents(value: number): number {
   return Math.round(value * 100);
+}
+
+/**
+ * Most Amazon outdoor gear titles follow "Brand Model Description".
+ * Extract a best-guess brand from the title when the API omits it.
+ * Falls back to "Unknown" only for truly unrecognizable patterns.
+ */
+const KNOWN_BRANDS = new Set([
+  "MSR", "Black Diamond", "Osprey", "REI", "Big Agnes", "Nemo", "Marmot",
+  "Patagonia", "Arc'teryx", "Columbia", "The North Face", "Petzl", "Black Diamond",
+  "Sawyer", "Platypus", "Katadyn", "LifeStraw", "Hydrapak", "Nalgene",
+  "Jetboil", "Snow Peak", "Primus", "BioLite", "GSI", "Sea to Summit",
+  "Merrell", "Salomon", "Vasque", "Keen", "La Sportiva", "Oboz", "Danner",
+  "Gregory", "Deuter", "Arc'teryx", "Mystery Ranch", "ULA", "Zpacks",
+  "Western Mountaineering", "Enlightened Equipment", "Feathered Friends",
+  "Petzl", "Fenix", "Nitecore", "Black Diamond", "Princeton Tec", "Energizer",
+]);
+
+/** Words/patterns that flag a listing as an accessory, replacement part, or non-adult product. */
+const EXCLUDE_PATTERN =
+  /\b(replacement|refill|cartridge|coupling|adapter|spare|repair kit|stuff sack|stuff bag|compression sack|pole|stakes?|footprint|guyline|seam seal|kid'?s?|boys?|girls?|children|toddler|youth|junior)\b/i;
+
+function isAccessory(title: string): boolean {
+  // Also exclude listings whose title starts with a digit (e.g. "5 Pack of...", "2x ...")
+  return EXCLUDE_PATTERN.test(title) || /^\d/.test(title.trim());
+}
+
+function extractBrand(item: RainforestSearchItem): string {
+  if (item.brand) return item.brand;
+  const title = item.title;
+  // Check known brands first (handles multi-word brands like "The North Face")
+  for (const brand of KNOWN_BRANDS) {
+    if (title.startsWith(brand)) return brand;
+  }
+  // Use the first word only if it looks like a real brand name (not a number or single letter)
+  const firstWord = title.split(" ")[0] ?? "";
+  return /^[A-Za-z]{2,}/.test(firstWord) ? firstWord : "Unknown";
 }
 
 function inferCategory(item: RainforestSearchItem | RainforestProduct): GearCategory {
@@ -76,7 +113,7 @@ function searchItemToProduct(item: RainforestSearchItem, category: GearCategory)
   return {
     id: `amz-${item.asin}`,
     name: item.title,
-    brand: item.brand ?? "Unknown",
+    brand: extractBrand(item),
     category,
     description: "",
     msrpCents,
@@ -186,7 +223,7 @@ export class RainforestDataSource implements DataSource {
           exclude_sponsored: "true",
         });
         return (data.search_results ?? [])
-          .filter((item) => !item.sponsered && item.price?.value)
+          .filter((item) => !item.sponsered && item.price?.value && !isAccessory(item.title))
           .map((item) => searchItemToProduct(item, category));
       }),
     );
