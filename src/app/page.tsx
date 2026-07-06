@@ -3,7 +3,7 @@ import { getDataSource } from "@/data";
 import { recommend } from "@/domain/recommend";
 import type { GearCategory } from "@/domain/types";
 import { formatUsd, formatRating } from "@/lib/format";
-import { ALL_CATEGORIES, CATEGORY_LABELS, starGlyphs } from "@/lib/ui";
+import { ALL_CATEGORIES, CATEGORY_EMOJI, CATEGORY_LABELS, starGlyphs } from "@/lib/ui";
 
 function isCategory(value: string | undefined): value is GearCategory {
   return !!value && (ALL_CATEGORIES as string[]).includes(value);
@@ -40,6 +40,16 @@ export default async function HomePage({
       <div className="grid">
         {results.map((r, i) => (
           <Link key={r.product.id} href={`/product/${r.product.id}`} className="card">
+            <div className="thumb">
+              {r.product.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={r.product.imageUrl} alt={r.product.name} loading="lazy" />
+              ) : (
+                <span className="thumb-fallback" aria-hidden="true">
+                  {CATEGORY_EMOJI[r.product.category]}
+                </span>
+              )}
+            </div>
             <span className="rank">#{i + 1} recommended</span>
             <div>
               <h3>{r.product.name}</h3>

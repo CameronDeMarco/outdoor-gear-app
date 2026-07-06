@@ -93,6 +93,74 @@ header.site .tagline {
   gap: 10px;
 }
 
+.card .thumb {
+  height: 170px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.card .thumb img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.card .thumb-fallback {
+  font-size: 52px;
+  opacity: 0.55;
+}
+
+.detail-head {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  margin-top: 8px;
+}
+
+.detail-photo {
+  flex: 0 0 300px;
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.detail-photo img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.detail-photo .thumb-fallback {
+  font-size: 96px;
+  opacity: 0.55;
+}
+
+.detail-info {
+  flex: 1 1 340px;
+  min-width: 0;
+}
+
+@media (max-width: 620px) {
+  .detail-head {
+    flex-direction: column;
+  }
+  .detail-photo {
+    flex-basis: auto;
+    width: 100%;
+    height: 240px;
+  }
+}
+
 .card .rank {
   font-size: 12px;
   font-weight: 700;

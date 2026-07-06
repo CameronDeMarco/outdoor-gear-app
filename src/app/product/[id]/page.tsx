@@ -4,7 +4,7 @@ import { getDataSource } from "@/data";
 import { scanPrices } from "@/domain/prices";
 import { scoreProduct } from "@/domain/recommend";
 import { formatUsd, formatRating } from "@/lib/format";
-import { CATEGORY_LABELS, starGlyphs } from "@/lib/ui";
+import { CATEGORY_EMOJI, CATEGORY_LABELS, starGlyphs } from "@/lib/ui";
 
 export default async function ProductPage({
   params,
@@ -36,20 +36,35 @@ export default async function ProductPage({
         ← All recommendations
       </Link>
 
-      <p className="muted">
-        {CATEGORY_LABELS[product.category]} · {product.brand}
-      </p>
-      <h1 style={{ margin: "0 0 8px" }}>{product.name}</h1>
+      <div className="detail-head">
+        <div className="detail-photo">
+          {product.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={product.imageUrl} alt={product.name} />
+          ) : (
+            <span className="thumb-fallback" aria-hidden="true">
+              {CATEGORY_EMOJI[product.category]}
+            </span>
+          )}
+        </div>
 
-      <div className="rating">
-        <span className="stars">{starGlyphs(scored.bayesianRating)}</span>
-        {formatRating(scored.bayesianRating)}
-        <span className="muted">
-          adjusted rating · {scored.totalReviews.toLocaleString()} reviews
-        </span>
+        <div className="detail-info">
+          <p className="muted">
+            {CATEGORY_LABELS[product.category]} · {product.brand}
+          </p>
+          <h1 style={{ margin: "0 0 8px" }}>{product.name}</h1>
+
+          <div className="rating">
+            <span className="stars">{starGlyphs(scored.bayesianRating)}</span>
+            {formatRating(scored.bayesianRating)}
+            <span className="muted">
+              adjusted rating · {scored.totalReviews.toLocaleString()} reviews
+            </span>
+          </div>
+
+          {product.description && <p>{product.description}</p>}
+        </div>
       </div>
-
-      <p style={{ maxWidth: 640 }}>{product.description}</p>
 
       <ul className="spec-list">
         {Object.entries(product.specs).map(([k, v]) => (
