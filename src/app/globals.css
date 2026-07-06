@@ -169,6 +169,17 @@ header.site .tagline {
   background: var(--amber);
 }
 
+.btn.secondary {
+  background: var(--pine);
+  opacity: 0.8;
+}
+
+.btn.small {
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 5px;
+}
+
 table.offers {
   width: 100%;
   border-collapse: collapse;

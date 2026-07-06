@@ -90,6 +90,15 @@ export default async function ProductPage({
                 <td>
                   {!o.inStock ? (
                     <span className="tag-oos">Out of stock</span>
+                  ) : o.url ? (
+                    <a
+                      className={`btn ${isBest ? "amber" : "secondary"} small`}
+                      href={o.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {isBest ? "Buy ★" : "Buy"}
+                    </a>
                   ) : isBest ? (
                     <span className="tag-best">BEST</span>
                   ) : null}

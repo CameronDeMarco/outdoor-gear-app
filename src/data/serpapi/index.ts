@@ -82,8 +82,7 @@ function groupByProduct(
         shippingCents: parseShippingCents(item.delivery),
         currency: "USD",
         inStock: item.tag !== "Out of stock",
-        // link = direct retailer page; fall back to Google Shopping product page
-        url: item.link ?? item.product_link ?? "",
+        url: buildRetailerUrl(retailerId, primary.title, item.link, item.product_link),
         lastUpdated: new Date().toISOString(),
       });
     }
@@ -123,6 +122,48 @@ function groupByProduct(
 
 function normalizeTitle(title: string): string {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60);
+}
+
+/** Returns the URL only if it points directly to a known retailer (not Google). */
+function isDirectRetailerUrl(url: string | undefined): url is string {
+  if (!url) return false;
+  try {
+    const host = new URL(url).hostname;
+    return !host.includes("google.") && !host.includes("googleadservices.");
+  } catch {
+    return false;
+  }
+}
+
+const RETAILER_SEARCH_TEMPLATES: Record<string, string> = {
+  amazon: "https://www.amazon.com/s?k=",
+  rei: "https://www.rei.com/search?q=",
+  backcountry: "https://www.backcountry.com/search?q=",
+  sierra: "https://www.sierra.com/search?q=",
+  moosejaw: "https://www.moosejaw.com/search?q=",
+  evo: "https://www.evo.com/search?query=",
+  steepandcheap: "https://www.steepandcheap.com/search?q=",
+  "sports-basement": "https://www.sportsbasement.com/search/?q=",
+  walmart: "https://www.walmart.com/search?q=",
+  target: "https://www.target.com/s?searchTerm=",
+  zappos: "https://www.zappos.com/search?term=",
+  "competitive-cyclist": "https://www.competitivecyclist.com/search?query=",
+  campsaver: "https://www.campsaver.com/search?q=",
+  "eastern-mountain-sports": "https://www.ems.com/search?q=",
+};
+
+function buildRetailerUrl(
+  retailerId: string,
+  title: string,
+  directUrl?: string,
+  fallbackProductLink?: string,
+): string {
+  if (isDirectRetailerUrl(directUrl)) return directUrl;
+  const template = RETAILER_SEARCH_TEMPLATES[retailerId];
+  if (template) return `${template}${encodeURIComponent(title)}`;
+  // For unrecognized retailers, send to their Google Shopping product page —
+  // the user can at least see the product and click through to the retailer.
+  return fallbackProductLink ?? "";
 }
 
 const KNOWN_BRANDS = [
