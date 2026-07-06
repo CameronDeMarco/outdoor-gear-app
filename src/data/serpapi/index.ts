@@ -1,6 +1,12 @@
 import type { DataSource } from "@/data/source";
 import type { GearCategory, Product, PriceOffer, ReviewSummary, Retailer } from "@/domain/types";
-import type { SerpApiShoppingResponse, SerpApiShoppingResult, SerpApiProductResponse } from "./types";
+import type {
+  SerpApiShoppingResponse,
+  SerpApiShoppingResult,
+  SerpApiImmersiveResponse,
+  SerpApiStore,
+} from "./types";
+import { retailerSearchUrl } from "@/data/retailerSearch";
 
 const BASE_URL = "https://serpapi.com/search";
 
@@ -52,6 +58,7 @@ function parseShippingCents(delivery?: string): number {
 function groupByProduct(
   results: SerpApiShoppingResult[],
   category: GearCategory,
+  tokenById?: Map<string, string>,
 ): Product[] {
   const groups = new Map<string, SerpApiShoppingResult[]>();
 
@@ -103,8 +110,16 @@ function groupByProduct(
     // ID encodes both the Google product ID and a name slug (separated by ~)
     // so getProduct can fall back to a shopping search if needed.
     const googleId = primary.product_id ?? normalizeTitle(primary.title);
+    const id = `serp-${googleId}~${normalizeTitle(primary.title)}`;
+
+    // Remember the immersive token so the detail page can expand this listing
+    // into per-seller offers without re-searching.
+    if (tokenById && primary.immersive_product_page_token) {
+      tokenById.set(id, primary.immersive_product_page_token);
+    }
+
     products.push({
-      id: `serp-${googleId}~${normalizeTitle(primary.title)}`,
+      id,
       name: primary.title,
       brand: extractBrand(primary.title),
       category,
@@ -118,6 +133,49 @@ function groupByProduct(
   }
 
   return products;
+}
+
+/**
+ * Convert immersive per-seller stores into our PriceOffer shape.
+ * Each store carries a direct retailer link and its own price + shipping,
+ * so this is what powers the multi-seller price comparison on the detail page.
+ */
+function storesToOffers(stores: SerpApiStore[], title: string): PriceOffer[] {
+  const byRetailer = new Map<string, PriceOffer>();
+
+  for (const store of stores) {
+    if (store.extracted_price == null || store.extracted_price <= 0) continue;
+
+    const retailerId = normalizeRetailerId(store.name);
+    const priceCents = Math.round(store.extracted_price * 100);
+    const shippingCents =
+      store.shipping_extracted != null
+        ? Math.round(store.shipping_extracted * 100)
+        : parseShippingCents(store.shipping);
+    const details = (store.details_and_offers ?? []).join(" ");
+    const inStock = !/out of stock/i.test(details);
+    const url = isDirectRetailerUrl(store.link)
+      ? store.link
+      : retailerSearchUrl(retailerId, title) || store.link || "";
+
+    const offer: PriceOffer = {
+      retailerId,
+      priceCents,
+      shippingCents,
+      currency: "USD",
+      inStock,
+      url,
+      lastUpdated: new Date().toISOString(),
+    };
+
+    // Keep the cheapest landed cost when a retailer appears more than once.
+    const existing = byRetailer.get(retailerId);
+    if (!existing || priceCents + shippingCents < existing.priceCents + existing.shippingCents) {
+      byRetailer.set(retailerId, offer);
+    }
+  }
+
+  return Array.from(byRetailer.values());
 }
 
 function normalizeTitle(title: string): string {
@@ -135,23 +193,6 @@ function isDirectRetailerUrl(url: string | undefined): url is string {
   }
 }
 
-const RETAILER_SEARCH_TEMPLATES: Record<string, string> = {
-  amazon: "https://www.amazon.com/s?k=",
-  rei: "https://www.rei.com/search?q=",
-  backcountry: "https://www.backcountry.com/search?q=",
-  sierra: "https://www.sierra.com/search?q=",
-  moosejaw: "https://www.moosejaw.com/search?q=",
-  evo: "https://www.evo.com/search?query=",
-  steepandcheap: "https://www.steepandcheap.com/search?q=",
-  "sports-basement": "https://www.sportsbasement.com/search/?q=",
-  walmart: "https://www.walmart.com/search?q=",
-  target: "https://www.target.com/s?searchTerm=",
-  zappos: "https://www.zappos.com/search?term=",
-  "competitive-cyclist": "https://www.competitivecyclist.com/search?query=",
-  campsaver: "https://www.campsaver.com/search?q=",
-  "eastern-mountain-sports": "https://www.ems.com/search?q=",
-};
-
 function buildRetailerUrl(
   retailerId: string,
   title: string,
@@ -159,8 +200,8 @@ function buildRetailerUrl(
   fallbackProductLink?: string,
 ): string {
   if (isDirectRetailerUrl(directUrl)) return directUrl;
-  const template = RETAILER_SEARCH_TEMPLATES[retailerId];
-  if (template) return `${template}${encodeURIComponent(title)}`;
+  const searchUrl = retailerSearchUrl(retailerId, title);
+  if (searchUrl) return searchUrl;
   // For unrecognized retailers, send to their Google Shopping product page —
   // the user can at least see the product and click through to the retailer.
   return fallbackProductLink ?? "";
@@ -188,6 +229,20 @@ function extractBrand(title: string): string {
 export class SerpApiDataSource implements DataSource {
   constructor(private readonly apiKey: string) {}
 
+  /**
+   * Maps our product id → the immersive token captured during listProducts,
+   * so a detail-page getProduct can fetch per-seller offers with just one API
+   * call instead of re-searching first. Persists for the process lifetime
+   * (getDataSource returns a singleton).
+   */
+  private readonly tokenById = new Map<string, string>();
+
+  /**
+   * Base product (name, brand, image, rating) captured during listProducts, so a
+   * detail view can skip the re-search and go straight to the immersive call.
+   */
+  private readonly baseById = new Map<string, Product>();
+
   private async fetch(params: Record<string, string>): Promise<SerpApiShoppingResponse> {
     const url = new URL(BASE_URL);
     url.searchParams.set("api_key", this.apiKey);
@@ -208,6 +263,27 @@ export class SerpApiDataSource implements DataSource {
     return res.json() as Promise<SerpApiShoppingResponse>;
   }
 
+  /** Fetch per-seller offers for a product via the immersive product endpoint. */
+  private async fetchImmersive(token: string): Promise<SerpApiStore[]> {
+    const url = new URL(BASE_URL);
+    url.searchParams.set("api_key", this.apiKey);
+    url.searchParams.set("engine", "google_immersive_product");
+    url.searchParams.set("gl", "us");
+    url.searchParams.set("hl", "en");
+    url.searchParams.set("page_token", token);
+
+    const res = await globalThis.fetch(url.toString(), {
+      next: { revalidate: 3600 },
+    } as RequestInit);
+
+    if (!res.ok) {
+      throw new Error(`SerpAPI immersive error ${res.status}: ${await res.text()}`);
+    }
+    const data = (await res.json()) as SerpApiImmersiveResponse;
+    if (data.error) throw new Error(`SerpAPI immersive: ${data.error}`);
+    return data.product_results?.stores ?? [];
+  }
+
   async listRetailers(): Promise<Retailer[]> {
     return [
       { id: "rei", name: "REI", url: "https://www.rei.com" },
@@ -216,6 +292,9 @@ export class SerpApiDataSource implements DataSource {
       { id: "sierra", name: "Sierra", url: "https://www.sierra.com" },
       { id: "moosejaw", name: "Moosejaw", url: "https://www.moosejaw.com" },
       { id: "evo", name: "evo", url: "https://www.evo.com" },
+      { id: "ebay", name: "eBay", url: "https://www.ebay.com" },
+      { id: "walmart", name: "Walmart", url: "https://www.walmart.com" },
+      { id: "target", name: "Target", url: "https://www.target.com" },
     ];
   }
 
@@ -231,33 +310,59 @@ export class SerpApiDataSource implements DataSource {
           num: "20",
         });
         if (data.error) throw new Error(`SerpAPI: ${data.error}`);
-        return groupByProduct(data.shopping_results ?? [], category);
+        return groupByProduct(data.shopping_results ?? [], category, this.tokenById);
       }),
     );
 
-    return results.flat();
+    const all = results.flat();
+    for (const product of all) this.baseById.set(product.id, product);
+    return all;
   }
 
   async getProduct(id: string): Promise<Product | null> {
     if (!id.startsWith("serp-")) return null;
 
-    // ID format: "serp-{googleId}~{nameSlug}"
-    // The CachingDataSource populates this from listProducts so this path is
-    // rarely hit. When it is (e.g. direct URL), re-search by the name slug.
-    const withoutPrefix = id.slice(5);
-    const tildeIdx = withoutPrefix.indexOf("~");
-    const nameSlug = tildeIdx !== -1 ? withoutPrefix.slice(tildeIdx + 1) : withoutPrefix;
-    const query = nameSlug.replace(/-/g, " ");
+    // Warm path: listProducts already ran this process, so we have the base
+    // product and immersive token cached — no re-search needed.
+    let base = this.baseById.get(id);
+    let token = this.tokenById.get(id);
 
-    const data = await this.fetch({ q: query, num: "10" });
-    if (data.error || !data.shopping_results?.length) return null;
+    // Cold path (e.g. direct link, fresh process): re-search by the name slug
+    // encoded in the id to recover the base product and token.
+    if (!base || !token) {
+      const withoutPrefix = id.slice(5); // strip "serp-"
+      const tildeIdx = withoutPrefix.indexOf("~");
+      const nameSlug = tildeIdx !== -1 ? withoutPrefix.slice(tildeIdx + 1) : withoutPrefix;
+      const query = nameSlug.replace(/-/g, " ");
 
-    const category = inferCategory((data.shopping_results[0]?.title ?? "").toLowerCase());
-    const products = groupByProduct(data.shopping_results, category);
-    const found = products.find((p) => p.id === id) ?? products[0];
-    if (!found) return null;
+      const data = await this.fetch({ q: query, num: "10" });
+      if (data.error || !data.shopping_results?.length) return base ?? null;
+
+      const category = inferCategory((data.shopping_results[0]?.title ?? "").toLowerCase());
+      const products = groupByProduct(data.shopping_results, category, this.tokenById);
+      const found = products.find((p) => p.id === id) ?? products[0];
+      base = base ?? found;
+      token = token ?? (found ? this.tokenById.get(found.id) : undefined);
+    }
+
+    if (!base) return null;
+
+    // Expand into per-seller offers (direct links, real prices) via the
+    // immersive endpoint. If it fails, fall back to the single search offer.
+    if (token) {
+      try {
+        const stores = await this.fetchImmersive(token);
+        const offers = storesToOffers(stores, base.name);
+        if (offers.length) {
+          return { ...base, id, offers };
+        }
+      } catch (err) {
+        console.warn("[serpapi] immersive fetch failed, using search offer:", (err as Error).message);
+      }
+    }
+
     // Keep the original id so navigation stays consistent.
-    return { ...found, id };
+    return { ...base, id };
   }
 }
 

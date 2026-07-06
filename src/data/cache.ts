@@ -64,10 +64,10 @@ export class CachingDataSource implements DataSource {
     if (cached) return cached;
     const result = await this.inner.listProducts(filter);
     this.cache.set(key, result, this.productTtl);
-    // Populate individual product cache so detail pages never need a second API call.
-    for (const product of result) {
-      this.cache.set(`product:${product.id}`, product, this.productTtl);
-    }
+    // Note: we intentionally do NOT pre-populate the per-product cache here.
+    // Detail pages enrich each product with per-seller offers (immersive API),
+    // which the list-level product lacks. The first detail view fetches and
+    // caches that richer version under `product:{id}`.
     return result;
   }
 

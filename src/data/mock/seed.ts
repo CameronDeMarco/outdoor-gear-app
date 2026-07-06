@@ -1,4 +1,5 @@
 import type { Product, Retailer } from "@/domain/types";
+import { retailerSearchUrl } from "@/data/retailerSearch";
 
 export const retailers: Retailer[] = [
   { id: "rei", name: "REI", url: "https://www.rei.com" },
@@ -8,6 +9,13 @@ export const retailers: Retailer[] = [
 ];
 
 const now = "2026-06-28T00:00:00.000Z";
+
+// Offer URLs are generated as retailer search links rather than guessed
+// product IDs (ASINs, SKUs) — a guessed ID risks linking to the wrong
+// product or a dead page, while a search always lands on real results.
+function url(retailerId: string, productName: string): string {
+  return retailerSearchUrl(retailerId, productName);
+}
 
 export const products: Product[] = [
   {
@@ -20,14 +28,14 @@ export const products: Product[] = [
     msrpCents: 54995,
     specs: { Weight: "3 lb 2 oz", Capacity: "2", Seasons: "3", "Floor Area": "29 sq ft" },
     reviews: [
-      { source: "REI", averageRating: 4.6, reviewCount: 1320, url: "https://www.rei.com/product/223720/big-agnes-copper-spur-hv-ul2-tent#reviews" },
+      { source: "REI", averageRating: 4.6, reviewCount: 1320 },
       { source: "Backcountry", averageRating: 4.7, reviewCount: 540 },
       { source: "OutdoorGearLab", averageRating: 4.5, reviewCount: 88 },
     ],
     offers: [
-      { retailerId: "rei", priceCents: 49995, shippingCents: 0, currency: "USD", inStock: true, url: "https://www.rei.com/product/223720/big-agnes-copper-spur-hv-ul2-tent", lastUpdated: now },
-      { retailerId: "backcountry", priceCents: 47996, shippingCents: 0, currency: "USD", inStock: true, url: "https://www.backcountry.com/big-agnes-copper-spur-hv-ul2-tent", lastUpdated: now },
-      { retailerId: "amazon", priceCents: 51999, shippingCents: 0, currency: "USD", inStock: true, url: "https://www.amazon.com/dp/B08F7KJ8XM", lastUpdated: now },
+      { retailerId: "rei", priceCents: 49995, shippingCents: 0, currency: "USD", inStock: true, url: url("rei", "Big Agnes Copper Spur HV UL2 Tent"), lastUpdated: now },
+      { retailerId: "backcountry", priceCents: 47996, shippingCents: 0, currency: "USD", inStock: true, url: url("backcountry", "Big Agnes Copper Spur HV UL2 Tent"), lastUpdated: now },
+      { retailerId: "amazon", priceCents: 51999, shippingCents: 0, currency: "USD", inStock: true, url: url("amazon", "Big Agnes Copper Spur HV UL2 Tent"), lastUpdated: now },
     ],
   },
   {
@@ -44,8 +52,8 @@ export const products: Product[] = [
       { source: "Amazon", averageRating: 4.4, reviewCount: 410 },
     ],
     offers: [
-      { retailerId: "rei", priceCents: 24893, shippingCents: 0, currency: "USD", inStock: true, url: "https://www.rei.com/product/236616/rei-co-op-half-dome-sl-2-tent", lastUpdated: now },
-      { retailerId: "amazon", priceCents: 28995, shippingCents: 0, currency: "USD", inStock: false, url: "https://www.amazon.com/dp/B09BHKXFLH", lastUpdated: now },
+      { retailerId: "rei", priceCents: 24893, shippingCents: 0, currency: "USD", inStock: true, url: url("rei", "REI Co-op Half Dome SL 2+ Tent"), lastUpdated: now },
+      { retailerId: "amazon", priceCents: 28995, shippingCents: 0, currency: "USD", inStock: false, url: url("amazon", "REI Co-op Half Dome SL 2+ Tent"), lastUpdated: now },
     ],
   },
   {
@@ -62,8 +70,8 @@ export const products: Product[] = [
       { source: "OutdoorGearLab", averageRating: 4.6, reviewCount: 64 },
     ],
     offers: [
-      { retailerId: "rei", priceCents: 33996, shippingCents: 0, currency: "USD", inStock: true, url: "https://www.rei.com/product/248422/rei-co-op-magma-15-sleeping-bag-mens", lastUpdated: now },
-      { retailerId: "moosejaw", priceCents: 35995, shippingCents: 599, currency: "USD", inStock: true, url: "https://www.moosejaw.com/product/rei-co-op-magma-15-sleeping-bag_10551067", lastUpdated: now },
+      { retailerId: "rei", priceCents: 33996, shippingCents: 0, currency: "USD", inStock: true, url: url("rei", "REI Co-op Magma 15 Sleeping Bag"), lastUpdated: now },
+      { retailerId: "moosejaw", priceCents: 35995, shippingCents: 599, currency: "USD", inStock: true, url: url("moosejaw", "REI Co-op Magma 15 Sleeping Bag"), lastUpdated: now },
     ],
   },
   {
@@ -81,9 +89,9 @@ export const products: Product[] = [
       { source: "Amazon", averageRating: 4.7, reviewCount: 1540 },
     ],
     offers: [
-      { retailerId: "rei", priceCents: 34000, shippingCents: 0, currency: "USD", inStock: true, url: "https://www.rei.com/product/177582/osprey-atmos-ag-65-pack", lastUpdated: now },
-      { retailerId: "backcountry", priceCents: 28900, shippingCents: 0, currency: "USD", inStock: true, url: "https://www.backcountry.com/osprey-atmos-ag-65-pack", lastUpdated: now },
-      { retailerId: "amazon", priceCents: 31499, shippingCents: 0, currency: "USD", inStock: true, url: "https://www.amazon.com/dp/B07YFJ4X8X", lastUpdated: now },
+      { retailerId: "rei", priceCents: 34000, shippingCents: 0, currency: "USD", inStock: true, url: url("rei", "Osprey Atmos AG 65 Pack"), lastUpdated: now },
+      { retailerId: "backcountry", priceCents: 28900, shippingCents: 0, currency: "USD", inStock: true, url: url("backcountry", "Osprey Atmos AG 65 Pack"), lastUpdated: now },
+      { retailerId: "amazon", priceCents: 31499, shippingCents: 0, currency: "USD", inStock: true, url: url("amazon", "Osprey Atmos AG 65 Pack"), lastUpdated: now },
     ],
   },
   {
@@ -100,8 +108,8 @@ export const products: Product[] = [
       { source: "REI", averageRating: 4.3, reviewCount: 3100 },
     ],
     offers: [
-      { retailerId: "amazon", priceCents: 11999, shippingCents: 0, currency: "USD", inStock: true, url: "https://www.amazon.com/dp/B09B6R1FRY", lastUpdated: now },
-      { retailerId: "rei", priceCents: 13500, shippingCents: 0, currency: "USD", inStock: true, url: "https://www.rei.com/product/222482/merrell-moab-3-waterproof-hiking-boots-mens", lastUpdated: now },
+      { retailerId: "amazon", priceCents: 11999, shippingCents: 0, currency: "USD", inStock: true, url: url("amazon", "Merrell Moab 3 Hiking Boots"), lastUpdated: now },
+      { retailerId: "rei", priceCents: 13500, shippingCents: 0, currency: "USD", inStock: true, url: url("rei", "Merrell Moab 3 Hiking Boots"), lastUpdated: now },
     ],
   },
   {
@@ -118,9 +126,9 @@ export const products: Product[] = [
       { source: "REI", averageRating: 4.7, reviewCount: 1900 },
     ],
     offers: [
-      { retailerId: "amazon", priceCents: 4495, shippingCents: 0, currency: "USD", inStock: true, url: "https://www.amazon.com/dp/B019SX0YX2", lastUpdated: now },
-      { retailerId: "rei", priceCents: 4995, shippingCents: 0, currency: "USD", inStock: true, url: "https://www.rei.com/product/119441/msr-pocketrocket-2-stove", lastUpdated: now },
-      { retailerId: "backcountry", priceCents: 4795, shippingCents: 0, currency: "USD", inStock: true, url: "https://www.backcountry.com/msr-pocketrocket-2-stove", lastUpdated: now },
+      { retailerId: "amazon", priceCents: 4495, shippingCents: 0, currency: "USD", inStock: true, url: url("amazon", "MSR PocketRocket 2 Stove"), lastUpdated: now },
+      { retailerId: "rei", priceCents: 4995, shippingCents: 0, currency: "USD", inStock: true, url: url("rei", "MSR PocketRocket 2 Stove"), lastUpdated: now },
+      { retailerId: "backcountry", priceCents: 4795, shippingCents: 0, currency: "USD", inStock: true, url: url("backcountry", "MSR PocketRocket 2 Stove"), lastUpdated: now },
     ],
   },
   {
@@ -137,8 +145,8 @@ export const products: Product[] = [
       { source: "REI", averageRating: 4.6, reviewCount: 2400 },
     ],
     offers: [
-      { retailerId: "amazon", priceCents: 3499, shippingCents: 0, currency: "USD", inStock: true, url: "https://www.amazon.com/dp/B005EHPOI4", lastUpdated: now },
-      { retailerId: "rei", priceCents: 3999, shippingCents: 0, currency: "USD", inStock: true, url: "https://www.rei.com/product/103050/sawyer-squeeze-water-filter-system", lastUpdated: now },
+      { retailerId: "amazon", priceCents: 3499, shippingCents: 0, currency: "USD", inStock: true, url: url("amazon", "Sawyer Squeeze Water Filter"), lastUpdated: now },
+      { retailerId: "rei", priceCents: 3999, shippingCents: 0, currency: "USD", inStock: true, url: url("rei", "Sawyer Squeeze Water Filter"), lastUpdated: now },
     ],
   },
   {
@@ -155,8 +163,8 @@ export const products: Product[] = [
       { source: "Backcountry", averageRating: 4.5, reviewCount: 280 },
     ],
     offers: [
-      { retailerId: "amazon", priceCents: 3995, shippingCents: 0, currency: "USD", inStock: true, url: "https://www.amazon.com/dp/B092D14GKF", lastUpdated: now },
-      { retailerId: "backcountry", priceCents: 4295, shippingCents: 0, currency: "USD", inStock: true, url: "https://www.backcountry.com/black-diamond-spot-400-headlamp", lastUpdated: now },
+      { retailerId: "amazon", priceCents: 3995, shippingCents: 0, currency: "USD", inStock: true, url: url("amazon", "Black Diamond Spot 400 Headlamp"), lastUpdated: now },
+      { retailerId: "backcountry", priceCents: 4295, shippingCents: 0, currency: "USD", inStock: true, url: url("backcountry", "Black Diamond Spot 400 Headlamp"), lastUpdated: now },
     ],
   },
   {
@@ -173,9 +181,9 @@ export const products: Product[] = [
       { source: "REI", averageRating: 4.6, reviewCount: 1240 },
     ],
     offers: [
-      { retailerId: "backcountry", priceCents: 23900, shippingCents: 0, currency: "USD", inStock: true, url: "https://www.backcountry.com/patagonia-nano-puff-jacket-mens", lastUpdated: now },
-      { retailerId: "rei", priceCents: 23900, shippingCents: 0, currency: "USD", inStock: true, url: "https://www.rei.com/product/213677/patagonia-nano-puff-jacket-mens", lastUpdated: now },
-      { retailerId: "moosejaw", priceCents: 19120, shippingCents: 0, currency: "USD", inStock: true, url: "https://www.moosejaw.com/product/patagonia-mens-nano-puff-jacket_10450271", lastUpdated: now },
+      { retailerId: "backcountry", priceCents: 23900, shippingCents: 0, currency: "USD", inStock: true, url: url("backcountry", "Patagonia Nano Puff Jacket"), lastUpdated: now },
+      { retailerId: "rei", priceCents: 23900, shippingCents: 0, currency: "USD", inStock: true, url: url("rei", "Patagonia Nano Puff Jacket"), lastUpdated: now },
+      { retailerId: "moosejaw", priceCents: 19120, shippingCents: 0, currency: "USD", inStock: true, url: url("moosejaw", "Patagonia Nano Puff Jacket"), lastUpdated: now },
     ],
   },
   {
@@ -189,7 +197,7 @@ export const products: Product[] = [
     specs: { Weight: "1 lb 15 oz", Capacity: "1", Seasons: "3" },
     reviews: [{ source: "REI", averageRating: 5.0, reviewCount: 3 }],
     offers: [
-      { retailerId: "rei", priceCents: 29900, shippingCents: 0, currency: "USD", inStock: true, url: "https://www.rei.com/product/224561/rei-co-op-flash-air-1-tent", lastUpdated: now },
+      { retailerId: "rei", priceCents: 29900, shippingCents: 0, currency: "USD", inStock: true, url: url("rei", "REI Co-op Flash Air 1 Tent"), lastUpdated: now },
     ],
   },
 ];

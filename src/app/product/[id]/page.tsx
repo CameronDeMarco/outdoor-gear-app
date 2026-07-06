@@ -17,7 +17,15 @@ export default async function ProductPage({
   if (!product) notFound();
 
   const retailers = await source.listRetailers();
-  const retailerName = (rid: string) => retailers.find((r) => r.id === rid)?.name ?? rid;
+  const retailerName = (rid: string) => {
+    const known = retailers.find((r) => r.id === rid)?.name;
+    if (known) return known;
+    // Prettify an unknown retailer id like "telemark-pyrenees" → "Telemark Pyrenees".
+    return rid
+      .split("-")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+  };
 
   const scan = scanPrices(product);
   const scored = scoreProduct(product);
