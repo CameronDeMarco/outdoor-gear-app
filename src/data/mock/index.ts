@@ -17,6 +17,17 @@ export class MockDataSource implements DataSource {
     return products.filter((p) => p.category === filter.category);
   }
 
+  async searchProducts(query: string) {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    // Match any whitespace-separated term against name, brand, or category.
+    const terms = q.split(/\s+/);
+    return products.filter((p) => {
+      const haystack = `${p.name} ${p.brand} ${p.category}`.toLowerCase();
+      return terms.every((t) => haystack.includes(t));
+    });
+  }
+
   async getProduct(id: string) {
     return products.find((p) => p.id === id) ?? null;
   }

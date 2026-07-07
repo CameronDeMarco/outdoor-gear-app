@@ -71,6 +71,15 @@ export class CachingDataSource implements DataSource {
     return result;
   }
 
+  async searchProducts(query: string): Promise<Product[]> {
+    const key = `search:${query.trim().toLowerCase()}`;
+    const cached = this.cache.get<Product[]>(key);
+    if (cached) return cached;
+    const result = await this.inner.searchProducts(query);
+    this.cache.set(key, result, this.productTtl);
+    return result;
+  }
+
   async getProduct(id: string): Promise<Product | null> {
     const key = `product:${id}`;
     const cached = this.cache.get<Product | null>(key);

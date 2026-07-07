@@ -32,6 +32,9 @@ class FallbackDataSource implements DataSource {
   listProducts(filter?: { category?: GearCategory }): Promise<Product[]> {
     return this.try((s) => s.listProducts(filter));
   }
+  searchProducts(query: string): Promise<Product[]> {
+    return this.try((s) => s.searchProducts(query));
+  }
   getProduct(id: string): Promise<Product | null> {
     return this.try((s) => s.getProduct(id));
   }

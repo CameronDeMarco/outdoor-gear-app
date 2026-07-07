@@ -57,7 +57,8 @@ function parseShippingCents(delivery?: string): number {
  */
 function groupByProduct(
   results: SerpApiShoppingResult[],
-  category: GearCategory,
+  // A fixed category (category browse) or null to infer per product (search).
+  category: GearCategory | null,
   tokenById?: Map<string, string>,
 ): Product[] {
   const groups = new Map<string, SerpApiShoppingResult[]>();
@@ -122,7 +123,7 @@ function groupByProduct(
       id,
       name: primary.title,
       brand: extractBrand(primary.title),
-      category,
+      category: category ?? inferCategory(primary.title.toLowerCase()),
       description: "",
       msrpCents,
       imageUrl: primary.thumbnail,
@@ -317,6 +318,20 @@ export class SerpApiDataSource implements DataSource {
     const all = results.flat();
     for (const product of all) this.baseById.set(product.id, product);
     return all;
+  }
+
+  async searchProducts(query: string): Promise<Product[]> {
+    const q = query.trim();
+    if (!q) return [];
+
+    const data = await this.fetch({ q, num: "20" });
+    if (data.error) throw new Error(`SerpAPI: ${data.error}`);
+
+    // Pass null so each result's category is inferred from its own title —
+    // search spans everything, not one fixed category.
+    const products = groupByProduct(data.shopping_results ?? [], null, this.tokenById);
+    for (const product of products) this.baseById.set(product.id, product);
+    return products;
   }
 
   async getProduct(id: string): Promise<Product | null> {

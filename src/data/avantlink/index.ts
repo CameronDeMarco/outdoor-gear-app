@@ -166,6 +166,27 @@ export class AvantLinkDataSource implements DataSource {
     return results.flat();
   }
 
+  async searchProducts(query: string): Promise<Product[]> {
+    const q = query.trim();
+    if (!q) return [];
+
+    const merchantList = this.merchants
+      .map((id) => MERCHANT_IDS[id])
+      .filter(Boolean)
+      .join(",");
+
+    const items = await this.fetch({
+      keyword: q,
+      merchant_ids: merchantList,
+      results_per_page: "50",
+      page_number: "1",
+      search_results_fields:
+        "Merchant_Name,Merchant_Product_Id,Product_Name,Brand_Name,Short_Description,Long_Description,Retail_Price,Sale_Price,In_Stock,Buy_URL,Image_URL,Category_Name,Shipping_Cost",
+    });
+
+    return items.map((item) => avantlinkToProduct(item, inferCategory(item)));
+  }
+
   async getProduct(id: string): Promise<Product | null> {
     if (!id.startsWith("avl-")) return null;
 

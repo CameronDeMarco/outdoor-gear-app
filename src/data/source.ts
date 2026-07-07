@@ -15,6 +15,13 @@ export interface DataSource {
   /** Full catalog, optionally filtered by category. */
   listProducts(filter?: { category?: GearCategory }): Promise<Product[]>;
 
+  /**
+   * Free-text product search. Unlike listProducts (fixed categories), this lets
+   * users find anything — "running shoes", "trekking poles" — by querying the
+   * backend directly. Category is inferred per result on a best-effort basis.
+   */
+  searchProducts(query: string): Promise<Product[]>;
+
   /** A single product by id, or null if unknown. */
   getProduct(id: string): Promise<Product | null>;
 }

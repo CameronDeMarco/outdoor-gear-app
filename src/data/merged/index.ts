@@ -25,6 +25,13 @@ export class MergedDataSource implements DataSource {
     return mergeProducts(allResults.flat());
   }
 
+  async searchProducts(query: string): Promise<Product[]> {
+    const allResults = await Promise.all(
+      this.sources.map((s) => s.searchProducts(query).catch(() => [] as Product[])),
+    );
+    return mergeProducts(allResults.flat());
+  }
+
   async getProduct(id: string): Promise<Product | null> {
     // Try each source in order; first non-null wins.
     // If the same product exists across sources we also merge their offers.

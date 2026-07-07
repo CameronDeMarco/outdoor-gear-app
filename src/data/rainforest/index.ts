@@ -231,6 +231,23 @@ export class RainforestDataSource implements DataSource {
     return results.flat();
   }
 
+  async searchProducts(query: string): Promise<Product[]> {
+    const q = query.trim();
+    if (!q) return [];
+
+    const data = await this.fetch<RainforestSearchResult>({
+      type: "search",
+      amazon_domain: "amazon.com",
+      search_term: q,
+      sort_by: "average_review",
+      exclude_sponsored: "true",
+    });
+
+    return (data.search_results ?? [])
+      .filter((item) => !item.sponsered && item.price?.value && !isAccessory(item.title))
+      .map((item) => searchItemToProduct(item, inferCategory(item)));
+  }
+
   async getProduct(id: string): Promise<Product | null> {
     if (!id.startsWith("amz-")) return null;
     const asin = id.slice(4);
