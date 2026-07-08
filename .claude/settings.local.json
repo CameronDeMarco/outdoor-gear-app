@@ -10,7 +10,11 @@
       "Bash(kill 79163)",
       "Bash(curl -s \"http://localhost:3000/api/recommendations?limit=5\")",
       "Bash(python3 -m json.tool)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(curl -s -m 8 -o /dev/null -w \"HTTP %{http_code} in %{time_total}s\\\\n\" http://50.187.63.220:3000/)",
+      "Bash(pkill -f \"expo start\")",
+      "Bash(pkill -f \"expo/bin\")",
+      "Bash(pkill -f webpack)"
     ]
   }
 }
