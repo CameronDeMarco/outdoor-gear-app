@@ -5,6 +5,8 @@ import { recommend } from "@/domain/recommend";
 import type { GearCategory } from "@/domain/types";
 import { formatUsd, formatRating } from "@/lib/format";
 import { ALL_CATEGORIES, CATEGORY_EMOJI, CATEGORY_LABELS, starGlyphs } from "@/lib/ui";
+import { getFavoritedIds } from "@/lib/favorites";
+import { FavoriteButton } from "@/components/FavoriteButton";
 
 function isCategory(value: string | undefined): value is GearCategory {
   return !!value && (ALL_CATEGORIES as string[]).includes(value);
@@ -73,10 +75,12 @@ export default async function HomePage({
 
 async function Results({ query, active }: { query: string; active?: GearCategory }) {
   const source = getDataSource();
-  // Free-text search overrides category browsing when present.
-  const products = query
-    ? await source.searchProducts(query)
-    : await source.listProducts();
+  // Free-text search overrides category browsing when present. Fetch products
+  // and the user's favorited ids together.
+  const [products, favoritedIds] = await Promise.all([
+    query ? source.searchProducts(query) : source.listProducts(),
+    getFavoritedIds(),
+  ]);
   const results = recommend(products, {
     category: query ? undefined : active,
     limit: 24,
@@ -95,45 +99,55 @@ async function Results({ query, active }: { query: string; active?: GearCategory
   return (
     <div className="grid">
       {results.map((r, i) => (
-        <Link key={r.product.id} href={`/product/${r.product.id}`} className="card">
-          <div className="thumb">
-            {r.product.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={r.product.imageUrl} alt={r.product.name} loading="lazy" />
-            ) : (
-              <span className="thumb-fallback" aria-hidden="true">
-                {CATEGORY_EMOJI[r.product.category]}
-              </span>
-            )}
-          </div>
-          <span className="rank">#{i + 1} recommended</span>
-          <div>
-            <h3>{r.product.name}</h3>
-            <div className="brand">{r.product.brand}</div>
-          </div>
-          <div className="rating">
-            <span className="stars">{starGlyphs(r.bayesianRating)}</span>
-            {formatRating(r.bayesianRating)}
-            <span className="muted">({r.totalReviews.toLocaleString()} reviews)</span>
-          </div>
-          <div>
-            {r.bestPriceCents !== null ? (
-              <>
-                <span className="price">{formatUsd(r.bestPriceCents)}</span>{" "}
-                <span className="muted">best price</span>
-              </>
-            ) : (
-              <span className="muted">Currently unavailable</span>
-            )}
-          </div>
-          <div className="reasons">
-            {r.reasons.map((reason) => (
-              <span key={reason} className="reason">
-                {reason}
-              </span>
-            ))}
-          </div>
-        </Link>
+        <div key={r.product.id} className="card-wrap">
+          <FavoriteButton
+            productId={r.product.id}
+            name={r.product.name}
+            brand={r.product.brand}
+            imageUrl={r.product.imageUrl}
+            priceCents={r.bestPriceCents ?? 0}
+            initialFavorited={favoritedIds.has(r.product.id)}
+          />
+          <Link href={`/product/${r.product.id}`} className="card">
+            <div className="thumb">
+              {r.product.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={r.product.imageUrl} alt={r.product.name} loading="lazy" />
+              ) : (
+                <span className="thumb-fallback" aria-hidden="true">
+                  {CATEGORY_EMOJI[r.product.category]}
+                </span>
+              )}
+            </div>
+            <span className="rank">#{i + 1} recommended</span>
+            <div>
+              <h3>{r.product.name}</h3>
+              <div className="brand">{r.product.brand}</div>
+            </div>
+            <div className="rating">
+              <span className="stars">{starGlyphs(r.bayesianRating)}</span>
+              {formatRating(r.bayesianRating)}
+              <span className="muted">({r.totalReviews.toLocaleString()} reviews)</span>
+            </div>
+            <div>
+              {r.bestPriceCents !== null ? (
+                <>
+                  <span className="price">{formatUsd(r.bestPriceCents)}</span>{" "}
+                  <span className="muted">best price</span>
+                </>
+              ) : (
+                <span className="muted">Currently unavailable</span>
+              )}
+            </div>
+            <div className="reasons">
+              {r.reasons.map((reason) => (
+                <span key={reason} className="reason">
+                  {reason}
+                </span>
+              ))}
+            </div>
+          </Link>
+        </div>
       ))}
     </div>
   );

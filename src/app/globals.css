@@ -71,6 +71,147 @@ header.site .tagline {
   border-radius: 6px;
 }
 
+/* ── Header + auth nav ─────────────────────────────────────────────────────── */
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.brand-block {
+  text-decoration: none;
+  color: inherit;
+}
+
+.auth-nav {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 14px;
+  flex-wrap: wrap;
+}
+
+.auth-link {
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+  opacity: 0.92;
+}
+
+.auth-link.primary {
+  background: rgba(255, 255, 255, 0.16);
+  padding: 6px 12px;
+  border-radius: 8px;
+}
+
+.auth-user {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.92;
+}
+
+/* ── Favorite heart on cards ───────────────────────────────────────────────── */
+.card-wrap {
+  position: relative;
+  display: flex;
+}
+
+.card-wrap .card {
+  flex: 1;
+}
+
+.fav-heart {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fav-heart:hover {
+  border-color: var(--amber);
+}
+
+.fav-heart.on {
+  color: var(--amber);
+  border-color: var(--amber);
+}
+
+.fav-heart:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* ── Auth pages (login / signup) ───────────────────────────────────────────── */
+.auth-card {
+  max-width: 380px;
+  margin: 20px auto;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 16px 0;
+}
+
+.auth-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.auth-form input {
+  padding: 10px 12px;
+  font-size: 15px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 400;
+}
+
+.auth-form input:focus {
+  outline: none;
+  border-color: var(--pine);
+  box-shadow: 0 0 0 3px rgba(47, 93, 80, 0.12);
+}
+
+.auth-error {
+  color: #b3261e;
+  font-size: 14px;
+  margin: 0;
+}
+
+.empty-state {
+  margin-top: 20px;
+}
+
 .search {
   display: flex;
   gap: 8px;

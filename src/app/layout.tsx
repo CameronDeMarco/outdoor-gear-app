@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import Link from "next/link";
+import { AuthNav } from "@/components/AuthNav";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,9 +15,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en">
       <body>
         <header className="site">
-          <div className="container">
-            <div className="brand">⛰️ Gear IQ</div>
-            <div className="tagline">Best-rated gear, scanned for the best price.</div>
+          <div className="container header-row">
+            <Link href="/" className="brand-block">
+              <div className="brand">⛰️ Gear IQ</div>
+              <div className="tagline">Best-rated gear, scanned for the best price.</div>
+            </Link>
+            <AuthNav />
           </div>
         </header>
         <main className="container">{children}</main>
