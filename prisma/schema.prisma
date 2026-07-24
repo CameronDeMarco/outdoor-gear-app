@@ -1,0 +1,38 @@
+// Prisma schema — the single source of truth for the database.
+// Dev uses SQLite (a local file); swap `provider` to "postgresql" for production.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  name      String?
+  password  String // bcrypt hash — never stored in plain text
+  createdAt DateTime   @default(now())
+  favorites Favorite[]
+}
+
+// A user's saved product. Products live in an external API (SerpAPI), not our DB,
+// so we store the product id PLUS a snapshot (name/brand/image/price) taken at
+// save time — the favorites page then renders with zero external API calls.
+model Favorite {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId  String
+  name       String
+  brand      String?
+  imageUrl   String?
+  priceCents Int
+  createdAt  DateTime @default(now())
+
+  // A user can't favorite the same product twice.
+  @@unique([userId, productId])
+}
