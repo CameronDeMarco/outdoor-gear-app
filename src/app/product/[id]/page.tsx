@@ -5,6 +5,8 @@ import { scanPrices } from "@/domain/prices";
 import { scoreProduct } from "@/domain/recommend";
 import { formatUsd, formatRating } from "@/lib/format";
 import { CATEGORY_EMOJI, CATEGORY_LABELS, starGlyphs } from "@/lib/ui";
+import { getFavoritedIds } from "@/lib/favorites";
+import { FavoriteButton } from "@/components/FavoriteButton";
 
 export default async function ProductPage({
   params,
@@ -29,6 +31,9 @@ export default async function ProductPage({
 
   const scan = scanPrices(product);
   const scored = scoreProduct(product);
+
+  const favoritedIds = await getFavoritedIds();
+  const isFavorited = favoritedIds.has(product.id);
 
   return (
     <>
@@ -63,6 +68,18 @@ export default async function ProductPage({
           </div>
 
           {product.description && <p>{product.description}</p>}
+
+          <div style={{ marginTop: 12 }}>
+            <FavoriteButton
+              productId={product.id}
+              name={product.name}
+              brand={product.brand}
+              imageUrl={product.imageUrl}
+              priceCents={scan.best?.totalCents ?? product.msrpCents}
+              initialFavorited={isFavorited}
+              variant="full"
+            />
+          </div>
         </div>
       </div>
 
