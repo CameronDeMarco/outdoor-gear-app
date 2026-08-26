@@ -1,5 +1,5 @@
 // Prisma schema — the single source of truth for the database.
-// Dev uses SQLite (a local file); swap `provider` to "postgresql" for production.
+// PostgreSQL everywhere: local Docker Postgres for dev, Cloud SQL in production.
 
 generator client {
   provider = "prisma-client-js"
