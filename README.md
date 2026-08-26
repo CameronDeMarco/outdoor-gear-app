@@ -3,9 +3,26 @@
 Recommends outdoor gear by **review quality** and scans **multiple retailers for the best price**.
 Built with Next.js (App Router) and modern, strict TypeScript.
 
-🔗 **Live demo:** https://gear-iq-app.vercel.app
+## 🔗 Try it live
 
-## Getting started
+### **https://geariq-853959061296.us-central1.run.app**
+
+Deployed on **Google Cloud Run**. No setup — just open it and:
+
+- Browse **ranked recommendations** (sorted by review quality, not raw stars).
+- **Search** for any gear — "running shoes", "trekking poles" — even outside the fixed categories.
+- Open a product to see a **multi-retailer price comparison** with direct buy links.
+- **Create an account** to save products to your favorites.
+
+## How it's deployed
+
+The live app runs as a container on **Cloud Run**, backed by **Cloud SQL for PostgreSQL**, with
+secrets in **Secret Manager** and the image built by **Cloud Build** into **Artifact Registry**.
+Full deploy steps are in [Deployment](#deployment-google-cloud-run) below.
+
+## Running it locally (optional)
+
+You don't need any of this to use the app — it's live at the link above. But to run it yourself:
 
 Requires **Node.js 18.18+** (20+ recommended) and npm.
 
@@ -14,8 +31,21 @@ npm install
 npm run dev        # http://localhost:3000
 ```
 
-The app runs out of the box on **mock seed data** — no API keys required, so `npm run dev` just
-works after install.
+**Browsing works out of the box** on mock seed data — no API keys or database required.
+
+Two optional extras:
+
+- **Live product data** — to pull real prices from Google Shopping via
+  [SerpAPI](https://serpapi.com) (free tier: 100 searches/month), add to `.env.local`:
+  ```bash
+  DATA_SOURCE=serpapi
+  SERPAPI_KEY=your_key_here
+  ```
+- **Accounts & favorites locally** — these features need a **PostgreSQL** database and an
+  `AUTH_SECRET`. The live app uses Cloud SQL; to run them locally, point `DATABASE_URL` (in `.env`)
+  at any Postgres — a local instance, or your Cloud SQL instance via the
+  [Cloud SQL Auth Proxy](https://cloud.google.com/sql/docs/postgres/sql-proxy) — generate a secret
+  with `npx auth secret`, then run `npx prisma migrate dev`.
 
 Other scripts:
 
@@ -23,46 +53,7 @@ Other scripts:
 npm run typecheck  # tsc --noEmit, strict mode
 npm test           # unit tests for the recommendation + price engines
 npm run build      # production build
-npm start          # serve the production build
 ```
-
-## Accounts & favorites (database setup)
-
-The login/account and favorites features use a local **SQLite** database (via **Prisma**) and
-**Auth.js**. Browsing works without this, but to enable accounts:
-
-```bash
-# 1. Create the local SQLite database and tables
-npx prisma migrate dev
-
-# 2. Generate a session-signing secret (writes AUTH_SECRET to .env.local)
-npx auth secret
-```
-
-`DATABASE_URL="file:./dev.db"` is already set in `.env` (non-secret, committed); the database file
-(`prisma/dev.db`) is gitignored. Then sign up at `/signup` and favorite any product.
-
-## Running on live data (optional)
-
-By default the app uses mock data. To pull real products and prices from Google Shopping via
-[SerpAPI](https://serpapi.com) (free tier: 100 searches/month, instant signup):
-
-```bash
-cp .env.example .env.local
-```
-
-Then set in `.env.local`:
-
-```bash
-DATA_SOURCE=serpapi
-SERPAPI_KEY=your_key_here
-```
-
-Restart the dev server. `.env.local` is gitignored — never commit real keys. If a live source fails
-or hits its quota, the app automatically falls back to mock data instead of erroring.
-
-See [`.env.example`](.env.example) for all supported modes (`mock`, `serpapi`, `rainforest`,
-`avantlink`, `live`) and their keys.
 
 ## How it works
 
@@ -105,7 +96,7 @@ per-seller prices and direct retailer links.
 ### Accounts & favorites — `src/auth.ts`, `src/app/api/favorites/`
 
 Email/password authentication via **Auth.js** (JWT sessions, bcrypt-hashed passwords) backed by a
-**Prisma** database. Favorites are auth-guarded API routes (`GET`/`POST`/`DELETE` at
+**Prisma/PostgreSQL** database. Favorites are auth-guarded API routes (`GET`/`POST`/`DELETE` at
 `/api/favorites`) that store a snapshot of the product (name, image, price at save time), so the
 favorites page renders with zero external API calls. Schema:
 [`prisma/schema.prisma`](prisma/schema.prisma).
@@ -117,7 +108,7 @@ favorites page renders with zero external API calls. Schema:
 - **Multi-retailer price comparison** with direct "Buy" links, sorted by landed cost.
 - **Product images** on tiles and detail pages, with graceful placeholders.
 - **Streaming UI** — server components with skeleton loading states so navigation feels instant.
-- **User accounts & favorites** — email/password auth (Auth.js) with a Prisma/SQLite database; save products to your account.
+- **User accounts & favorites** — email/password auth (Auth.js) with a Prisma/PostgreSQL database.
 
 ## Project structure
 
@@ -148,20 +139,55 @@ src/
 prisma/
   schema.prisma            Database schema (User, Favorite)
   migrations/              Version-controlled SQL migrations
+Dockerfile                 Production container image for Cloud Run
 ```
 
-## Deployment
+## Deployment (Google Cloud Run)
 
-Deployed on [Vercel](https://vercel.com). To run live data in production, set `DATA_SOURCE=serpapi`
-and `SERPAPI_KEY` under **Project → Settings → Environment Variables**, then redeploy (env var
-changes only take effect on a new deployment).
+Prerequisites: a Google Cloud project with billing enabled and the `gcloud` CLI. Enable the APIs:
 
-The accounts feature uses SQLite locally; for production, switch the Prisma datasource to
-`postgresql`, point `DATABASE_URL` at a hosted Postgres (e.g. Vercel Postgres or Neon), set
-`AUTH_SECRET`, and run `npx prisma migrate deploy`.
+```bash
+gcloud services enable run.googleapis.com sqladmin.googleapis.com secretmanager.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
+```
+
+1. **Provision Postgres** — create a Cloud SQL instance, database, and user:
+
+   ```bash
+   gcloud sql instances create geariq-db --database-version=POSTGRES_16 --edition=ENTERPRISE --tier=db-f1-micro --region=us-central1
+   gcloud sql databases create geariq --instance=geariq-db
+   gcloud sql users create geariq_user --instance=geariq-db --password='YOUR_DB_PASSWORD'
+   ```
+
+2. **Store secrets** in Secret Manager (`DATABASE_URL`, `AUTH_SECRET`, `SERPAPI_KEY`) and grant the
+   Cloud Run runtime service account `roles/secretmanager.secretAccessor` on each. The
+   `DATABASE_URL` uses the Cloud SQL socket form:
+   `postgresql://geariq_user:PASSWORD@localhost/geariq?host=/cloudsql/PROJECT:REGION:INSTANCE`.
+
+3. **Run migrations** against Cloud SQL via the
+   [Cloud SQL Auth Proxy](https://cloud.google.com/sql/docs/postgres/sql-proxy):
+
+   ```bash
+   ./cloud-sql-proxy PROJECT:REGION:INSTANCE          # in one terminal
+   DATABASE_URL="postgresql://geariq_user:PASSWORD@localhost:5432/geariq" npx prisma migrate deploy
+   ```
+
+4. **Build and deploy** (Cloud Build builds the `Dockerfile`, deploys to Cloud Run, and wires up the
+   database + secrets):
+
+   ```bash
+   gcloud run deploy geariq --source . --region us-central1 --allow-unauthenticated --memory 1Gi \
+     --add-cloudsql-instances PROJECT:REGION:INSTANCE \
+     --set-secrets DATABASE_URL=DATABASE_URL:latest,AUTH_SECRET=AUTH_SECRET:latest,SERPAPI_KEY=SERPAPI_KEY:latest \
+     --set-env-vars DATA_SOURCE=serpapi,AUTH_TRUST_HOST=true
+   ```
+
+The deploy prints the public service URL. `--add-cloudsql-instances` mounts the `/cloudsql/...`
+socket that `DATABASE_URL` points at, and `--set-secrets` injects the Secret Manager values as
+environment variables at runtime.
 
 ## Tech stack
 
-Next.js 15 (App Router, React 19 server components) · TypeScript (strict) · SerpAPI for live data ·
-**Auth.js** for authentication · **Prisma** ORM with SQLite (dev) / Postgres (prod) · deployed on
-Vercel. The recommendation and pricing logic is hand-written and framework-agnostic.
+Next.js 15 (App Router, React 19 server components) · TypeScript (strict) · **Auth.js** for
+authentication · **Prisma** ORM with **PostgreSQL** · **SerpAPI** for live product data · deployed on
+**Google Cloud Run** with **Cloud SQL** and **Secret Manager**. The recommendation and pricing logic
+is hand-written and framework-agnostic.
